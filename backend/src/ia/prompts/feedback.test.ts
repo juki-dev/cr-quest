@@ -5,6 +5,10 @@ describe('FEEDBACK_INSTRUCTIONS', () => {
   it('prohíbe contradecir los pasos mal ubicados ya calculados', () => {
     expect(FEEDBACK_INSTRUCTIONS).toMatch(/nunca los cuestiones/i);
   });
+
+  it('ancla la explicación a las fuentes oficiales de Cruz Roja, no a conocimiento genérico', () => {
+    expect(FEEDBACK_INSTRUCTIONS).toMatch(/fuentes oficiales de cruz roja/i);
+  });
 });
 
 describe('buildFeedbackPrompt', () => {

@@ -9,6 +9,10 @@ describe('GENERATION_INSTRUCTIONS', () => {
   it('prohíbe datos de pacientes reales (RQ-T.4)', () => {
     expect(GENERATION_INSTRUCTIONS).toMatch(/no incluyas datos de pacientes reales/i);
   });
+
+  it('ancla la terminología a las fuentes oficiales de Cruz Roja, no a conocimiento genérico', () => {
+    expect(GENERATION_INSTRUCTIONS).toMatch(/manuales de cruz roja/i);
+  });
 });
 
 describe('buildGenerationPrompt', () => {
