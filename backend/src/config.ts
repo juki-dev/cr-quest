@@ -1,32 +1,30 @@
 import { getParameter } from '@aws-lambda-powertools/parameters/ssm';
 
-export interface BedrockModelConfig {
-  generationModelId: string;
-  feedbackModelId: string;
-}
-
 const CACHE_TTL_SECONDS = 300;
 
 function parameterPath(stage: string, name: string): string {
   return `/cr-quest/${stage}/bedrock/model-id/${name}`;
 }
 
+async function getModelId(stage: string, name: string): Promise<string> {
+  const value = await getParameter(parameterPath(stage, name), { maxAge: CACHE_TTL_SECONDS });
+  if (!value) {
+    throw new Error(`Falta el parámetro de configuración /cr-quest/${stage}/bedrock/model-id/${name} en SSM.`);
+  }
+  return value;
+}
+
 /**
  * ADR-8 (be_specs.md § 1) — el ID de modelo se resuelve por configuración, nunca
- * hardcodeado (RQ-4.3): cambiar de modelo es cambiar el parámetro de SSM, no
- * redesplegar código. `getParameter` de Lambda Powertools cachea en memoria del
- * proceso durante `CACHE_TTL_SECONDS`, así que no hay una llamada a SSM por
- * invocación bajo carga normal.
+ * hardcodeado (RQ-4.3). Cada handler solo pide el parámetro que le corresponde:
+ * su rol de IAM está acotado a ese único path (BE-SEC.4), así que combinar
+ * ambas lecturas en una sola función (como se hacía antes) rompía en cualquier
+ * Lambda que no tuviera permiso sobre el otro parámetro.
  */
-export async function getBedrockModelConfig(stage: string): Promise<BedrockModelConfig> {
-  const [generationModelId, feedbackModelId] = await Promise.all([
-    getParameter(parameterPath(stage, 'generacion'), { maxAge: CACHE_TTL_SECONDS }),
-    getParameter(parameterPath(stage, 'feedback'), { maxAge: CACHE_TTL_SECONDS }),
-  ]);
+export function getGenerationModelId(stage: string): Promise<string> {
+  return getModelId(stage, 'generacion');
+}
 
-  if (!generationModelId || !feedbackModelId) {
-    throw new Error('Faltan parámetros de configuración de modelos Bedrock en SSM.');
-  }
-
-  return { generationModelId, feedbackModelId };
+export function getFeedbackModelId(stage: string): Promise<string> {
+  return getModelId(stage, 'feedback');
 }
