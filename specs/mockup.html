@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrenamiento APH · Valoración del paciente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --rojo: #E2001A;
+    --rojo-dark: #A80014;
+    --azul: #0057B8;
+    --azul-dark: #002C6C;
+    --blanco: #FFFFFF;
+    --superficie: #F3F6FA;
+    --superficie-2: #E9EEF5;
+    --borde: #D8E0EA;
+    --texto: #17203A;
+    --texto-suave: #5B6478;
+  }
+
+  *{ box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation: none !important; transition: none !important; }
+  }
+
+  body{
+    margin:0;
+    background: var(--superficie);
+    color: var(--texto);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .brand-mark{
+    width: 20px; height: 20px;
+    flex-shrink:0;
+    color: var(--rojo);
+  }
+  .brand-mark svg{ width:100%; height:100%; display:block; }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 16px 28px;
+    background: var(--blanco);
+    border-bottom: 1px solid var(--borde);
+  }
+  .topbar .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-weight:700;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+  .topbar .brand-sub{
+    font-size: 13px;
+    color: var(--texto-suave);
+    border-left: 1px solid var(--borde);
+    padding-left: 12px;
+    margin-left: 2px;
+  }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    max-width: 1280px;
+    margin: 24px auto;
+    padding: 0 24px;
+  }
+  @media (max-width: 900px){
+    .layout{ grid-template-columns: 1fr; padding: 0 16px; }
+  }
+
+  .card{
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--azul);
+    margin: 0 0 6px 0;
+  }
+
+  h1.card-title{
+    font-size: 19px;
+    margin: 0 0 12px 0;
+  }
+
+  .narrative{
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--texto);
+    margin: 0;
+  }
+
+  /* ---------- Working area ---------- */
+  .work-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 18px;
+  }
+  @media (max-width: 640px){
+    .work-grid{ grid-template-columns: 1fr; }
+  }
+
+  .pool-title, .seq-title{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--texto-suave);
+    margin: 0 0 10px 0;
+  }
+
+  .pool{
+    display:flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 260px;
+    padding: 10px;
+    background: var(--superficie);
+    border: 1px dashed var(--borde);
+    border-radius: 10px;
+  }
+
+  .chip{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    cursor: grab;
+    user-select: none;
+    transition: border-color .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+  .chip:hover{ border-color: var(--azul); box-shadow: 0 1px 6px rgba(0,87,184,0.12); }
+  .chip:active{ cursor: grabbing; }
+  .chip.dragging{ opacity: 0.4; }
+  .chip .dot{
+    width:6px; height:6px; border-radius:50%;
+    background: var(--rojo); flex-shrink:0;
+  }
+  .chip:focus-visible{ outline: 2px solid var(--azul); outline-offset: 2px; }
+
+  .sequence{
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+  }
+
+  .slot{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    min-height: 44px;
+    background: var(--blanco);
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    padding: 8px 12px 8px 8px;
+    font-size: 13.5px;
+    transition: border-color .15s ease, background-color .15s ease;
+  }
+  .slot.over{ border-color: var(--azul); background: var(--superficie-2); }
+  .slot.filled{ cursor: pointer; }
+  .slot.filled:hover{ border-color: var(--rojo); }
+  .slot.empty{ color: var(--texto-suave); font-style: italic; }
+
+  .slot-num{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--blanco);
+    background: var(--azul-dark);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+
+  .slot.correct{ border-color: var(--azul); }
+  .slot.correct .slot-num{ background: var(--azul); }
+  .slot.incorrect{ border-color: var(--rojo); background: #FFF3F3; }
+  .slot.incorrect .slot-num{ background: var(--rojo); }
+
+  /* ---------- Actions ---------- */
+  .actions{
+    display:flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  button{
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 22px;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: background-color .15s ease, transform .05s ease;
+  }
+  button:active{ transform: scale(0.98); }
+  button:focus-visible{ outline: 2px solid var(--azul-dark); outline-offset: 2px; }
+
+  .btn-primary{ background: var(--azul); color: var(--blanco); }
+  .btn-primary:hover{ background: var(--azul-dark); }
+
+  .btn-secondary{ background: var(--blanco); color: var(--rojo); border-color: var(--rojo); }
+  .btn-secondary:hover{ background: #FFF1F1; }
+
+  .feedback{
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    display:none;
+  }
+  .feedback.show{ display:block; }
+  .feedback.ok{ background: #EAF2FC; border: 1px solid var(--azul); color: var(--azul-dark); }
+  .feedback.warn{ background: #FFF1F1; border: 1px solid var(--rojo); color: var(--rojo-dark); }
+  .feedback .score{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{ display:flex; flex-direction:column; gap: 16px; }
+
+  .profile-card{ display:flex; flex-direction:column; gap: 4px; }
+  .profile-top{ display:flex; align-items:center; gap: 12px; margin-bottom: 10px;}
+  .avatar{
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--azul-dark);
+    color: var(--blanco);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size: 15px;
+    flex-shrink:0;
+  }
+  .profile-name{ font-weight: 700; font-size: 15px; }
+  .profile-sub{ font-size: 12.5px; color: var(--texto-suave); }
+
+  .profile-stats{
+    display:flex;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid var(--borde);
+  }
+  .stat{ flex:1; }
+  .stat-value{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--rojo);
+  }
+  .stat-label{ font-size: 11px; color: var(--texto-suave); text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .ranking-title{ font-size: 15px; font-weight: 700; margin: 0 0 4px 0; }
+  .ranking-sub{ font-size: 12px; color: var(--texto-suave); margin: 0 0 14px 0; }
+
+  .rank-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 9px 8px;
+    border-radius: 8px;
+  }
+  .rank-row + .rank-row{ margin-top: 2px; }
+  .rank-row.me{
+    background: var(--superficie-2);
+    border-left: 3px solid var(--rojo);
+    padding-left: 5px;
+  }
+
+  .rank-pos{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    width: 24px;
+    text-align:center;
+    color: var(--texto-suave);
+    flex-shrink:0;
+  }
+  .rank-row:nth-child(1) .rank-pos,
+  .rank-row:nth-child(2) .rank-pos,
+  .rank-row:nth-child(3) .rank-pos{
+    color: var(--blanco);
+    background: var(--azul-dark);
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .rank-row:nth-child(1) .rank-pos{ background: var(--rojo); }
+
+  .rank-avatar{
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--superficie-2);
+    color: var(--azul-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size: 12px;
+    flex-shrink:0;
+  }
+
+  .rank-info{ flex:1; min-width:0; }
+  .rank-name{ font-size: 13px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rank-meta{ font-size: 11.5px; color: var(--texto-suave); }
+
+  .rank-points{
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    text-align: right;
+    flex-shrink:0;
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12h4l2 7 4-14 2 7h8"/>
+        </svg>
+      </span>
+      Entrenamiento APH
+    </div>
+    <div class="brand-sub">Práctica de valoración del paciente</div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ===== Columna principal ===== -->
+    <main>
+      <div class="card">
+        <p class="eyebrow">Caso publicado</p>
+        <h1 class="card-title">Escenario de práctica</h1>
+        <p class="narrative">
+          Accidente de tránsito en una vía urbana. El paciente es un hombre adulto, encontrado
+          junto a su motocicleta con el casco puesto. Un transeúnte activó la llamada de
+          emergencia y permanece junto al paciente. La escena está señalizada y aparenta ser
+          segura. Al acercarte, el paciente no responde a estímulos verbales.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="work-grid">
+          <div>
+            <p class="pool-title">Pasos disponibles — arrástralos o tócalos para ubicarlos</p>
+            <div class="pool" id="pool"></div>
+          </div>
+          <div>
+            <p class="seq-title">Tu orden de valoración</p>
+            <div class="sequence" id="sequence"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" id="btnEnviar">Enviar respuesta</button>
+          <button class="btn-secondary" id="btnLimpiar">Limpiar</button>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+      </div>
+    </main>
+
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar">
+      <div class="card profile-card">
+        <div class="profile-top">
+          <div class="avatar">TÚ</div>
+          <div>
+            <div class="profile-name">Tu progreso</div>
+            <div class="profile-sub">4.º lugar en el ranking general</div>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="stat">
+            <div class="stat-value">11.904</div>
+            <div class="stat-label">Puntos</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">128</div>
+            <div class="stat-label">Casos</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="ranking-title">Ranking general</p>
+        <p class="ranking-sub">Puntos = suma del mejor acierto por cada caso resuelto</p>
+
+        <div class="rank-row">
+          <div class="rank-pos">1</div>
+          <div class="rank-avatar">CR</div>
+          <div class="rank-info">
+            <div class="rank-name">Camila Ríos</div>
+            <div class="rank-meta">154 casos</div>
+          </div>
+          <div class="rank-points">14.860</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">2</div>
+          <div class="rank-avatar">AP</div>
+          <div class="rank-info">
+            <div class="rank-name">Andrés Peña</div>
+            <div class="rank-meta">149 casos</div>
+          </div>
+          <div class="rank-points">14.155</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">3</div>
+          <div class="rank-avatar">LG</div>
+          <div class="rank-info">
+            <div class="rank-name">Laura Gómez</div>
+            <div class="rank-meta">138 casos</div>
+          </div>
+          <div class="rank-points">12.972</div>
+        </div>
+
+        <div class="rank-row me">
+          <div class="rank-pos">4</div>
+          <div class="rank-avatar">TÚ</div>
+          <div class="rank-info">
+            <div class="rank-name">Tú</div>
+            <div class="rank-meta">128 casos</div>
+          </div>
+          <div class="rank-points">11.904</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">5</div>
+          <div class="rank-avatar">JR</div>
+          <div class="rank-info">
+            <div class="rank-name">Julián Rey</div>
+            <div class="rank-meta">121 casos</div>
+          </div>
+          <div class="rank-points">11.132</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">6</div>
+          <div class="rank-avatar">SC</div>
+          <div class="rank-info">
+            <div class="rank-name">Sofía Cano</div>
+            <div class="rank-meta">119 casos</div>
+          </div>
+          <div class="rank-points">10.710</div>
+        </div>
+
+        <div class="rank-row">
+          <div class="rank-pos">7</div>
+          <div class="rank-avatar">MD</div>
+          <div class="rank-info">
+            <div class="rank-name">Mateo Duarte</div>
+            <div class="rank-meta">110 casos</div>
+          </div>
+          <div class="rank-points">9.790</div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+<script>
+  // ---- Datos de ejemplo (simulan la respuesta validada de /domain) ----
+  const steps = [
+    { id: 's1', label: 'Verificar la seguridad de la escena' },
+    { id: 's2', label: 'Evaluar el estado de conciencia' },
+    { id: 's3', label: 'Activar el sistema de emergencias (SEM)' },
+    { id: 's4', label: 'Abrir y liberar la vía aérea' },
+    { id: 's5', label: 'Verificar la respiración' },
+    { id: 's6', label: 'Verificar el pulso y la circulación' },
+  ];
+  const correctOrder = ['s1','s2','s3','s4','s5','s6'];
+  const stepMap = Object.fromEntries(steps.map(s => [s.id, s.label]));
+
+  let poolOrder = ['s3','s1','s5','s2','s6','s4']; // orden desordenado inicial
+  let slots = [null, null, null, null, null, null];
+  let submitted = false;
+
+  const poolEl = document.getElementById('pool');
+  const seqEl = document.getElementById('sequence');
+  const feedbackEl = document.getElementById('feedback');
+
+  function render(){
+    // Pool
+    poolEl.innerHTML = '';
+    poolOrder.forEach(id => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.draggable = true;
+      chip.tabIndex = 0;
+      chip.dataset.id = id;
+      chip.innerHTML = `<span class="dot"></span>${stepMap[id]}`;
+      chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', id);
+        chip.classList.add('dragging');
+      });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+      chip.addEventListener('click', () => placeInNextEmptySlot(id));
+      chip.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placeInNextEmptySlot(id); }
+      });
+      poolEl.appendChild(chip);
+    });
+
+    // Secuencia
+    seqEl.innerHTML = '';
+    slots.forEach((id, i) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot ' + (id ? 'filled' : 'empty');
+      if (submitted && id) {
+        slot.classList.add(id === correctOrder[i] ? 'correct' : 'incorrect');
+      }
+      slot.dataset.index = i;
+      slot.innerHTML = `<span class="slot-num">${i+1}</span>${id ? stepMap[id] : 'Suelta aquí un paso'}`;
+
+      slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('over'); });
+      slot.addEventListener('dragleave', () => slot.classList.remove('over'));
+      slot.addEventListener('drop', e => {
+        e.preventDefault();
+        slot.classList.remove('over');
+        const draggedId = e.dataTransfer.getData('text/plain');
+        placeInSlot(draggedId, i);
+      });
+      slot.addEventListener('click', () => { if (id) removeFromSlot(i); });
+
+      seqEl.appendChild(slot);
+    });
+  }
+
+  function placeInNextEmptySlot(id){
+    const idx = slots.findIndex(s => s === null);
+    if (idx === -1) return;
+    placeInSlot(id, idx);
+  }
+
+  function placeInSlot(id, index){
+    if (!id || !stepMap[id]) return;
+    // si ya estaba en otro slot, lo liberamos primero
+    const prevIndex = slots.indexOf(id);
+    if (prevIndex !== -1) slots[prevIndex] = null;
+    // si el slot destino ya tenía algo, ese vuelve al pool
+    const bumped = slots[index];
+    slots[index] = id;
+    poolOrder = poolOrder.filter(p => p !== id);
+    if (bumped) poolOrder.push(bumped);
+
+    submitted = false;
+    feedbackEl.className = 'feedback';
+    render();
+  }
+
+  function removeFromSlot(index){
+    const id = slots[index];
+    if (!id) return;
+    slots[index] = null;
+    poolOrder.push(id);
+    submitted = false;
+    feedbackEl.className = 'feedback';
+    render();
+  }
+
+  document.getElementById('btnEnviar').addEventListener('click', () => {
+    if (slots.some(s => s === null)) {
+      feedbackEl.className = 'feedback warn show';
+      feedbackEl.innerHTML = 'Completa el orden de los 6 pasos antes de enviar tu respuesta.';
+      return;
+    }
+    const matches = slots.filter((id, i) => id === correctOrder[i]).length;
+    const accuracy = Math.round((matches / correctOrder.length) * 100);
+    submitted = true;
+    feedbackEl.className = 'feedback ok show';
+    feedbackEl.innerHTML = `Coincidencia con la secuencia validada: <span class="score">${accuracy}%</span>
+      (${matches} de ${correctOrder.length} pasos en su posición correcta). Los pasos en azul están
+      correctamente ubicados; los que quedan en rojo conviene repasarlos.`;
+    render();
+  });
+
+  document.getElementById('btnLimpiar').addEventListener('click', () => {
+    slots = [null, null, null, null, null, null];
+    poolOrder = steps.map(s => s.id).sort(() => Math.random() - 0.5);
+    submitted = false;
+    feedbackEl.className = 'feedback';
+    render();
+  });
+
+  render();
+</script>
+
+</body>
+</html>

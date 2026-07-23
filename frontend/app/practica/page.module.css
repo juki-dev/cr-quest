@@ -1,0 +1,15 @@
+/* Portado de mockup.html:70-80 */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  max-width: 1280px;
+  margin: 24px auto;
+  padding: 0 24px;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+  }
+}

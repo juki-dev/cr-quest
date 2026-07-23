@@ -1,0 +1,103 @@
+@import '../styles/tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100vw;
+}
+
+body {
+  margin: 0;
+  background: var(--superficie);
+  color: var(--texto);
+  font-family: var(--font-sans), 'IBM Plex Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Portado de mockup.html:37-42 */
+.brand-mark {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--rojo);
+}
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Portado de mockup.html:82-109 — primitivas de tarjeta reutilizadas por todas las pantallas */
+.card {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono), 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--azul);
+  margin: 0 0 6px 0;
+}
+
+.cardTitle {
+  font-size: 19px;
+  margin: 0 0 12px 0;
+}
+
+.narrative {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--texto);
+  margin: 0;
+}
+
+/* Portado de mockup.html:208-225 */
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 22px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    transform 0.05s ease;
+}
+button:active {
+  transform: scale(0.98);
+}
+button:focus-visible {
+  outline: 2px solid var(--azul-dark);
+  outline-offset: 2px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-primary {
+  background: var(--azul);
+  color: var(--blanco);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--azul-dark);
+}
+
+.btn-secondary {
+  background: var(--blanco);
+  color: var(--rojo);
+  border-color: var(--rojo);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: #fff1f1;
+}

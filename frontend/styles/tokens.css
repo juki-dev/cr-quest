@@ -1,0 +1,23 @@
+/* Portado literal de mockup.html:10-21 — no renombrar variables, deben quedar comparables 1:1 */
+:root {
+  --rojo: #e2001a;
+  --rojo-dark: #a80014;
+  --azul: #0057b8;
+  --azul-dark: #002c6c;
+  --blanco: #ffffff;
+  --superficie: #f3f6fa;
+  --superficie-2: #e9eef5;
+  --borde: #d8e0ea;
+  --texto: #17203a;
+  --texto-suave: #5b6478;
+}
+
+/* Portado de mockup.html:25-27 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,84 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'domain/**'
+      - 'backend/**'
+      - 'infra/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Stage a desplegar (usado como sufijo de los stacks y de los parámetros SSM)'
+        required: false
+        default: 'dev'
+
+permissions:
+  id-token: write # OIDC — sin credenciales de AWS de larga duración
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  STAGE: ${{ github.event.inputs.stage || 'dev' }}
+
+jobs:
+  test:
+    name: Lint, typecheck y tests (dominio + backend + infra)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @cr-quest/domain --filter @cr-quest/backend --filter @cr-quest/infra run lint
+
+      - name: Typecheck
+        run: pnpm --filter @cr-quest/domain --filter @cr-quest/backend --filter @cr-quest/infra run build
+
+      - name: Tests unitarios
+        run: pnpm --filter @cr-quest/domain --filter @cr-quest/backend --filter @cr-quest/infra run test
+
+  deploy:
+    name: cdk deploy
+    needs: test
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.stage || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Configurar credenciales de AWS (OIDC, sin secretos de larga duración)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk deploy --all
+        working-directory: infra
+        run: pnpm exec cdk deploy --all --require-approval never --context stage=${{ env.STAGE }}

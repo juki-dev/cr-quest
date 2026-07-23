@@ -1,0 +1,26 @@
+/* Portado de mockup.html:45-67 */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: var(--blanco);
+  border-bottom: 1px solid var(--borde);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.brandSub {
+  font-size: 13px;
+  color: var(--texto-suave);
+  border-left: 1px solid var(--borde);
+  padding-left: 12px;
+  margin-left: 2px;
+}

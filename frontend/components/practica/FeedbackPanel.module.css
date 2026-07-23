@@ -1,0 +1,26 @@
+/* Portado de mockup.html:227-241 */
+.feedback {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.ok {
+  background: #eaf2fc;
+  border: 1px solid var(--azul);
+  color: var(--azul-dark);
+}
+.warn {
+  background: #fff1f1;
+  border: 1px solid var(--rojo);
+  color: var(--rojo-dark);
+}
+.score {
+  font-family: var(--font-mono), 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+}
+.explanation {
+  margin-top: 8px;
+  line-height: 1.5;
+}
