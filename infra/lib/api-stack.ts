@@ -18,10 +18,17 @@ const REPO_ROOT = `${__dirname}/../..`;
 const HANDLERS_ENTRY_DIR = `${REPO_ROOT}/backend/src/handlers/entry`;
 
 // ADR-8 (be_specs.md) — IDs de modelo confirmados con acceso habilitado en la
-// cuenta de destino (`aws bedrock list-foundation-models`), resueltos por SSM
-// en runtime — nunca hardcodeados en el código de los handlers.
-const GENERATION_MODEL_ID = 'anthropic.claude-sonnet-4-6';
-const FEEDBACK_MODEL_ID = 'anthropic.claude-haiku-4-5-20251001-v1:0';
+// cuenta de destino, resueltos por SSM en runtime — nunca hardcodeados en el
+// código de los handlers.
+//
+// 🔎 Hallazgo: estos modelos solo exponen inferenceTypesSupported=INFERENCE_PROFILE
+// (`aws bedrock get-foundation-model`) — no aceptan invocación ni batch inference
+// por el modelId base, hace falta el ARN del inference profile ("us." = cross-region
+// dentro de EE.UU., visto en `aws bedrock list-inference-profiles`). Confirmado
+// empíricamente: CreateModelInvocationJob con el modelId base devuelve
+// "Batch inference is not supported for the requested model".
+const GENERATION_INFERENCE_PROFILE_ID = 'us.anthropic.claude-sonnet-4-6';
+const FEEDBACK_INFERENCE_PROFILE_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 
 export interface ApiStackProps extends StackProps {
   stage: string;
@@ -40,14 +47,19 @@ export class ApiStack extends Stack {
 
     const { stage, scenariosTable, attemptsTable, batchBucket, userPool, userPoolClient } = props;
 
+    // ARN completo del inference profile — es el formato verificado contra la
+    // API real de Bedrock (tanto InvokeModel como CreateModelInvocationJob).
+    const generationModelArn = `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${GENERATION_INFERENCE_PROFILE_ID}`;
+    const feedbackModelArn = `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${FEEDBACK_INFERENCE_PROFILE_ID}`;
+
     // ---- ADR-8 — parámetros de configuración de modelos, no secretos de código ----
     new ssm.StringParameter(this, 'GenerationModelIdParam', {
       parameterName: `/cr-quest/${stage}/bedrock/model-id/generacion`,
-      stringValue: GENERATION_MODEL_ID,
+      stringValue: generationModelArn,
     });
     new ssm.StringParameter(this, 'FeedbackModelIdParam', {
       parameterName: `/cr-quest/${stage}/bedrock/model-id/feedback`,
-      stringValue: FEEDBACK_MODEL_ID,
+      stringValue: feedbackModelArn,
     });
 
     // ---- BE-IA — rol que Bedrock (el servicio) asume para leer/escribir el batch ----
@@ -98,9 +110,7 @@ export class ApiStack extends Stack {
     submitAttemptFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel'],
-        resources: [
-          `arn:aws:bedrock:${this.region}::foundation-model/${FEEDBACK_MODEL_ID}`,
-        ],
+        resources: [feedbackModelArn],
       }),
     );
     // Nota: NO se usa ssm.StringParameter.fromStringParameterName().grantRead() aquí.
@@ -138,12 +148,12 @@ export class ApiStack extends Stack {
     submitScenarioBatchFn.addToRolePolicy(
       new iam.PolicyStatement({
         // CreateModelInvocationJob autoriza sobre el recurso "job" que se va a
-        // crear (con cuenta, sin wildcard de partición doble como el de
-        // foundation-model) además del modelo que ese job invoca.
+        // crear (con cuenta, sin el formato sin-cuenta de foundation-model)
+        // además del inference profile que ese job invoca.
         actions: ['bedrock:CreateModelInvocationJob'],
         resources: [
           `arn:aws:bedrock:${this.region}:${this.account}:model-invocation-job/*`,
-          `arn:aws:bedrock:${this.region}::foundation-model/${GENERATION_MODEL_ID}`,
+          generationModelArn,
         ],
       }),
     );
