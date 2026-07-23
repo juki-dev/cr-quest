@@ -137,8 +137,14 @@ export class ApiStack extends Stack {
     batchBucket.grantWrite(submitScenarioBatchFn, 'input/*');
     submitScenarioBatchFn.addToRolePolicy(
       new iam.PolicyStatement({
+        // CreateModelInvocationJob autoriza sobre el recurso "job" que se va a
+        // crear (con cuenta, sin wildcard de partición doble como el de
+        // foundation-model) además del modelo que ese job invoca.
         actions: ['bedrock:CreateModelInvocationJob'],
-        resources: [`arn:aws:bedrock:${this.region}::foundation-model/${GENERATION_MODEL_ID}`],
+        resources: [
+          `arn:aws:bedrock:${this.region}:${this.account}:model-invocation-job/*`,
+          `arn:aws:bedrock:${this.region}::foundation-model/${GENERATION_MODEL_ID}`,
+        ],
       }),
     );
     submitScenarioBatchFn.addToRolePolicy(
