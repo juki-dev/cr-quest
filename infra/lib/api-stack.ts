@@ -27,8 +27,10 @@ const HANDLERS_ENTRY_DIR = `${REPO_ROOT}/backend/src/handlers/entry`;
 // dentro de EE.UU., visto en `aws bedrock list-inference-profiles`). Confirmado
 // empíricamente: CreateModelInvocationJob con el modelId base devuelve
 // "Batch inference is not supported for the requested model".
-const GENERATION_INFERENCE_PROFILE_ID = 'us.anthropic.claude-sonnet-4-6';
-const FEEDBACK_INFERENCE_PROFILE_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
+const GENERATION_MODEL_ID = 'anthropic.claude-sonnet-4-6';
+const FEEDBACK_MODEL_ID = 'anthropic.claude-haiku-4-5-20251001-v1:0';
+const GENERATION_INFERENCE_PROFILE_ID = `us.${GENERATION_MODEL_ID}`;
+const FEEDBACK_INFERENCE_PROFILE_ID = `us.${FEEDBACK_MODEL_ID}`;
 
 export interface ApiStackProps extends StackProps {
   stage: string;
@@ -47,10 +49,18 @@ export class ApiStack extends Stack {
 
     const { stage, scenariosTable, attemptsTable, batchBucket, userPool, userPoolClient } = props;
 
-    // ARN completo del inference profile — es el formato verificado contra la
-    // API real de Bedrock (tanto InvokeModel como CreateModelInvocationJob).
+    // ARN completo del inference profile — es el que se pasa como `modelId` en
+    // las llamadas (verificado contra la API real de Bedrock).
     const generationModelArn = `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${GENERATION_INFERENCE_PROFILE_ID}`;
     const feedbackModelArn = `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${FEEDBACK_INFERENCE_PROFILE_ID}`;
+
+    // 🔎 Hallazgo: un inference profile cross-region no alcanza como único
+    // recurso en la policy de IAM. Bedrock autoriza la invocación real contra
+    // el foundation-model subyacente al que el profile enruta, así que hace
+    // falta conceder permiso sobre AMBOS ARN o falla con AccessDenied apenas
+    // se invoca — confirmado contra CloudTrail en una invocación real.
+    const generationFoundationModelArn = `arn:aws:bedrock:${this.region}::foundation-model/${GENERATION_MODEL_ID}`;
+    const feedbackFoundationModelArn = `arn:aws:bedrock:${this.region}::foundation-model/${FEEDBACK_MODEL_ID}`;
 
     // ---- ADR-8 — parámetros de configuración de modelos, no secretos de código ----
     new ssm.StringParameter(this, 'GenerationModelIdParam', {
@@ -110,7 +120,7 @@ export class ApiStack extends Stack {
     submitAttemptFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel'],
-        resources: [feedbackModelArn],
+        resources: [feedbackModelArn, feedbackFoundationModelArn],
       }),
     );
     // Nota: NO se usa ssm.StringParameter.fromStringParameterName().grantRead() aquí.
@@ -154,6 +164,7 @@ export class ApiStack extends Stack {
         resources: [
           `arn:aws:bedrock:${this.region}:${this.account}:model-invocation-job/*`,
           generationModelArn,
+          generationFoundationModelArn,
         ],
       }),
     );

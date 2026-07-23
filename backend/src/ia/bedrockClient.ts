@@ -39,7 +39,11 @@ export async function generateFeedback(
 
     const payload = JSON.parse(new TextDecoder().decode(response.body)) as ClaudeInvokeBody;
     return payload.content?.[0]?.text ?? null;
-  } catch {
+  } catch (error) {
+    // BE-OBS.1 — degradar a null nunca debe significar quedar ciegos: sin este
+    // log, un fallo sistemático (permiso mal apuntado, formato de body roto)
+    // es indistinguible de un timeout ocasional en CloudWatch.
+    console.error('generateFeedback: la llamada a Bedrock falló, se degrada a explanation=null', error);
     return null;
   } finally {
     clearTimeout(timeout);
