@@ -91,4 +91,10 @@ describe('ApiStack', () => {
       }),
     });
   });
+
+  it('el scheduler nocturno queda desactivado hasta tener el prompt de generación definitivo', () => {
+    template.hasResourceProperties('AWS::Scheduler::Schedule', {
+      State: 'DISABLED',
+    });
+  });
 });

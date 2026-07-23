@@ -247,6 +247,12 @@ export class ApiStack extends Stack {
       flexibleTimeWindow: { mode: 'OFF' },
       scheduleExpression: 'cron(0 6 * * ? *)',
       scheduleExpressionTimezone: 'America/Bogota',
+      // Desactivado a pedido del usuario hasta tener el prompt de generación
+      // definitivo — evita correr (y gastar en Bedrock) con contenido de
+      // dominio que todavía es borrador pendiente de revisión de instructor.
+      // El recurso queda declarado, no se borra, para reactivarlo cambiando
+      // este valor a 'ENABLED' cuando el prompt esté cerrado.
+      state: 'DISABLED',
       target: {
         arn: submitScenarioBatchFn.functionArn,
         roleArn: schedulerRole.roleArn,
