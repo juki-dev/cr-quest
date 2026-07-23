@@ -103,11 +103,20 @@ export class ApiStack extends Stack {
         ],
       }),
     );
-    ssm.StringParameter.fromStringParameterName(
-      this,
-      'FeedbackModelIdParamRef',
-      `/cr-quest/${stage}/bedrock/model-id/feedback`,
-    ).grantRead(submitAttemptFn);
+    // Nota: NO se usa ssm.StringParameter.fromStringParameterName().grantRead() aquí.
+    // Esa API sintetiza un CfnParameter de tipo AWS::SSM::Parameter::Value<String>,
+    // que CloudFormation resuelve consultando SSM ANTES de crear cualquier recurso
+    // del stack — una referencia circular cuando el parámetro se crea en este mismo
+    // deploy. Un PolicyStatement con el ARN armado a mano logra el mismo permiso
+    // sin ese efecto secundario.
+    submitAttemptFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/cr-quest/${stage}/bedrock/model-id/feedback`,
+        ],
+      }),
+    );
 
     const getLeaderboardFn = createFunction('GetLeaderboardFn', 'getLeaderboard.ts', {
       ATTEMPTS_TABLE_NAME: attemptsTable.tableName,
@@ -135,11 +144,14 @@ export class ApiStack extends Stack {
     submitScenarioBatchFn.addToRolePolicy(
       new iam.PolicyStatement({ actions: ['iam:PassRole'], resources: [bedrockBatchRole.roleArn] }),
     );
-    ssm.StringParameter.fromStringParameterName(
-      this,
-      'GenerationModelIdParamRef',
-      `/cr-quest/${stage}/bedrock/model-id/generacion`,
-    ).grantRead(submitScenarioBatchFn);
+    submitScenarioBatchFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameter'],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter/cr-quest/${stage}/bedrock/model-id/generacion`,
+        ],
+      }),
+    );
 
     const ingestScenarioBatchFn = createFunction('IngestScenarioBatchFn', 'ingestScenarioBatch.ts', {
       SCENARIOS_TABLE_NAME: scenariosTable.tableName,
