@@ -1,8 +1,18 @@
 import type { ScenarioTemplate } from '@cr-quest/domain';
 import { buildGenerationPrompt, GENERATION_INSTRUCTIONS } from './prompts/generacion.js';
 
+/**
+ * 🔎 Hallazgo: Bedrock rechaza un batch job con menos de 100 registros
+ * ("contains less records (N) than the required minimum of: 100"),
+ * confirmado contra la API real. Con una librería de /domain más chica que
+ * eso (como al inicio de un piloto), la única forma de cumplir el mínimo es
+ * repetir las plantillas — el modelo igual genera una narrativa distinta en
+ * cada repetición, así que el resultado es variedad real, no copias.
+ */
+export const MIN_BATCH_RECORDS = 100;
+
 export interface BatchRecord {
-  recordId: string; // = templateId, para reasociar la salida a su plantilla de origen
+  recordId: string; // `${templateId}#${instancia}` — puede repetirse la plantilla
   modelInput: {
     anthropic_version: string;
     max_tokens: number;
@@ -11,17 +21,31 @@ export interface BatchRecord {
   };
 }
 
-/** BE-IA.1 — un registro de batch inference por plantilla; la narrativa es lo único variable. */
+/** BE-IA.1 — un registro por instancia; la narrativa es lo único variable, nunca el orden. */
 export function buildBatchRecords(templates: ScenarioTemplate[]): BatchRecord[] {
-  return templates.map((template) => ({
-    recordId: template.templateId,
-    modelInput: {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: 600,
-      system: GENERATION_INSTRUCTIONS,
-      messages: [{ role: 'user', content: buildGenerationPrompt(template) }],
-    },
-  }));
+  if (templates.length === 0) return [];
+
+  const records: BatchRecord[] = [];
+  let instance = 0;
+  while (records.length < MIN_BATCH_RECORDS) {
+    const template = templates[instance % templates.length]!;
+    records.push({
+      recordId: `${template.templateId}#${instance}`,
+      modelInput: {
+        anthropic_version: 'bedrock-2023-05-31',
+        max_tokens: 600,
+        system: GENERATION_INSTRUCTIONS,
+        messages: [{ role: 'user', content: buildGenerationPrompt(template) }],
+      },
+    });
+    instance++;
+  }
+  return records;
+}
+
+/** Deshace el sufijo `#instancia` de un recordId para recuperar el templateId de origen. */
+export function templateIdFromRecordId(recordId: string): string {
+  return recordId.split('#')[0]!;
 }
 
 export function toJsonl(records: BatchRecord[]): string {

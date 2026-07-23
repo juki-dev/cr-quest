@@ -1,5 +1,5 @@
 import type { ScenarioTemplate } from '@cr-quest/domain';
-import { extractNarrative, parseJsonlLine } from '../ia/batchJob.js';
+import { extractNarrative, parseJsonlLine, templateIdFromRecordId } from '../ia/batchJob.js';
 import type { BatchJobsRepo } from '../repositories/batchJobsRepo.js';
 import type { ScenariosRepo } from '../repositories/scenariosRepo.js';
 
@@ -53,7 +53,8 @@ export function createIngestScenarioBatchHandler(deps: IngestScenarioBatchDeps) 
           try {
             const parsed = parseJsonlLine(line);
             const narrative = extractNarrative(parsed);
-            const template = deps.templates.find((t) => t.templateId === parsed.recordId);
+            const templateId = templateIdFromRecordId(parsed.recordId);
+            const template = deps.templates.find((t) => t.templateId === templateId);
             if (!narrative || !template) continue;
 
             await deps.scenariosRepo.putScenario({

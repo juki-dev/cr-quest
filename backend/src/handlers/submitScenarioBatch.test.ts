@@ -1,5 +1,6 @@
 import type { ScenarioTemplate } from '@cr-quest/domain';
 import { describe, expect, it, vi } from 'vitest';
+import { MIN_BATCH_RECORDS } from '../ia/batchJob.js';
 import { createSubmitScenarioBatchHandler } from './submitScenarioBatch.js';
 
 const templates: ScenarioTemplate[] = [
@@ -44,7 +45,7 @@ describe('submitScenarioBatch handler', () => {
     expect(result).toEqual({ jobId: 'job-123', templateCount: 2 });
     expect(deps.uploadBatchInput).toHaveBeenCalledTimes(1);
     const [jsonl] = deps.uploadBatchInput.mock.calls[0]!;
-    expect(jsonl.split('\n')).toHaveLength(2);
+    expect(jsonl.split('\n')).toHaveLength(MIN_BATCH_RECORDS);
 
     expect(deps.createBatchJob).toHaveBeenCalledWith(
       expect.objectContaining({ modelId: 'modelo-sonnet' }),

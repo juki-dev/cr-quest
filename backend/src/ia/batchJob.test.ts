@@ -1,6 +1,13 @@
 import type { ScenarioTemplate } from '@cr-quest/domain';
 import { describe, expect, it } from 'vitest';
-import { buildBatchRecords, extractNarrative, parseJsonlLine, toJsonl } from './batchJob.js';
+import {
+  buildBatchRecords,
+  extractNarrative,
+  MIN_BATCH_RECORDS,
+  parseJsonlLine,
+  templateIdFromRecordId,
+  toJsonl,
+} from './batchJob.js';
 
 const templates: ScenarioTemplate[] = [
   {
@@ -22,9 +29,24 @@ const templates: ScenarioTemplate[] = [
 ];
 
 describe('buildBatchRecords', () => {
-  it('genera un registro por plantilla, identificado por templateId', () => {
+  it('BE-IA.1 — completa el mínimo de registros que exige Bedrock repitiendo plantillas', () => {
     const records = buildBatchRecords(templates);
-    expect(records.map((r) => r.recordId)).toEqual(['tmpl-001', 'tmpl-002']);
+    expect(records.length).toBe(MIN_BATCH_RECORDS);
+  });
+
+  it('cada recordId es único aunque la plantilla se repita', () => {
+    const records = buildBatchRecords(templates);
+    expect(new Set(records.map((r) => r.recordId)).size).toBe(records.length);
+  });
+
+  it('templateIdFromRecordId recupera la plantilla de origen de cada instancia repetida', () => {
+    const records = buildBatchRecords(templates);
+    const templateIds = new Set(records.map((r) => templateIdFromRecordId(r.recordId)));
+    expect(templateIds).toEqual(new Set(['tmpl-001', 'tmpl-002']));
+  });
+
+  it('devuelve una lista vacía si no hay plantillas (no entra en loop infinito)', () => {
+    expect(buildBatchRecords([])).toEqual([]);
   });
 
   it('nunca incluye correctSequence en el prompt enviado al modelo', () => {
@@ -42,8 +64,18 @@ describe('toJsonl / parseJsonlLine', () => {
     const records = buildBatchRecords(templates);
     const jsonl = toJsonl(records);
     const lines = jsonl.split('\n');
-    expect(lines).toHaveLength(2);
-    expect(parseJsonlLine(lines[0]!).recordId).toBe('tmpl-001');
+    expect(lines).toHaveLength(MIN_BATCH_RECORDS);
+    expect(parseJsonlLine(lines[0]!).recordId).toBe(records[0]!.recordId);
+  });
+});
+
+describe('templateIdFromRecordId', () => {
+  it('deshace el sufijo #instancia', () => {
+    expect(templateIdFromRecordId('tmpl-001#42')).toBe('tmpl-001');
+  });
+
+  it('devuelve el valor tal cual si no tiene sufijo', () => {
+    expect(templateIdFromRecordId('tmpl-001')).toBe('tmpl-001');
   });
 });
 
