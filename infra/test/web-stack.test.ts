@@ -8,6 +8,7 @@ let template: Template;
 beforeAll(() => {
   const app = new App();
   const stack = new WebStack(app, 'TestWebStack', {
+    env: { account: '111111111111', region: 'us-east-1' },
     stage: 'test',
     apiUrl: 'https://api.example.com',
     cognitoDomain: 'https://cr-quest-test.auth.us-east-1.amazoncognito.com',
@@ -51,13 +52,13 @@ describe('WebStack', () => {
     expect(app.Properties.AccessToken).toContain('{{resolve:secretsmanager:cr-quest/github-token');
   });
 
-  it('existe un rol de servicio de Amplify', () => {
+  it('el rol de servicio confía en el principal general Y el regional de Amplify (SSR)', () => {
+    // WEB_COMPUTE asume vía el principal regional; sin él el build no arranca.
     template.hasResourceProperties('AWS::IAM::Role', {
       AssumeRolePolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
-          Match.objectLike({
-            Principal: { Service: 'amplify.amazonaws.com' },
-          }),
+          Match.objectLike({ Principal: { Service: 'amplify.amazonaws.com' } }),
+          Match.objectLike({ Principal: { Service: 'amplify.us-east-1.amazonaws.com' } }),
         ]),
       }),
     });
