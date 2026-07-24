@@ -48,7 +48,15 @@ export class WebStack extends Stack {
     // Rol de servicio de Amplify (build + compute SSR). Política administrada
     // que AWS provee para el rol de servicio de Amplify.
     const serviceRole = new iam.Role(this, 'AmplifyServiceRole', {
-      assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
+      // En la plataforma WEB_COMPUTE (SSR) el build asume el rol vía el
+      // principal REGIONAL de Amplify (amplify.<region>.amazonaws.com), no el
+      // general. Sin el regional, el build falla con "Unable to assume
+      // specified IAM Role" aunque el trust parezca correcto — requisito no
+      // documentado de Amplify SSR. Se incluyen ambos.
+      assumedBy: new iam.CompositePrincipal(
+        new iam.ServicePrincipal('amplify.amazonaws.com'),
+        new iam.ServicePrincipal(`amplify.${this.region}.amazonaws.com`),
+      ),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess-Amplify'),
       ],
