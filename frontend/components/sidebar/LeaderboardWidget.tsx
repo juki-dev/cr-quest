@@ -1,7 +1,7 @@
 'use client';
 
+import { useSession } from '@/components/auth/SessionProvider';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
-import { getCurrentUserId } from '@/lib/session';
 import { RankRow } from './RankRow';
 import styles from './Sidebar.module.css';
 
@@ -11,12 +11,12 @@ const TOP_N = 5;
 // queda fuera de él, agrega su fila igual — nunca desaparece de su propia vista.
 export function LeaderboardWidget() {
   const { data, isLoading } = useLeaderboard();
+  const { userId: currentUserId } = useSession();
 
   if (isLoading || !data) {
     return <div className="card">Cargando ranking…</div>;
   }
 
-  const currentUserId = getCurrentUserId();
   const top = data.entries.slice(0, TOP_N);
   const meInTop = top.some((e) => e.userId === currentUserId);
   const meEntry = data.entries.find((e) => e.userId === currentUserId);

@@ -7,7 +7,7 @@ let template: Template;
 
 beforeAll(() => {
   const app = new App();
-  const stack = new AuthStack(app, 'TestAuthStack');
+  const stack = new AuthStack(app, 'TestAuthStack', { stage: 'test' });
   template = Template.fromStack(stack);
 });
 
@@ -23,6 +23,22 @@ describe('AuthStack', () => {
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       GenerateSecret: false,
     });
+  });
+
+  it('ADR-2 (revisado) — App Client con flujo de código OAuth y Google como IdP soportado', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      AllowedOAuthFlows: ['code'],
+      AllowedOAuthScopes: ['openid', 'email', 'profile'],
+      SupportedIdentityProviders: ['Google', 'COGNITO'],
+    });
+  });
+
+  it('ADR-2 (revisado) — existe el IdP de Google y el dominio Hosted UI', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPoolIdentityProvider', {
+      ProviderName: 'Google',
+      ProviderType: 'Google',
+    });
+    template.resourceCountIs('AWS::Cognito::UserPoolDomain', 1);
   });
 
   it('BE-SEC.2 — existen los grupos voluntario e instructor', () => {

@@ -1,14 +1,33 @@
-import * as mockApi from '@/lib/mock/mockApi';
-import type { SubmitAttemptRequest } from '@/lib/types';
+import type {
+  LeaderboardResponse,
+  ScenarioResponse,
+  SubmitAttemptRequest,
+  SubmitAttemptResponse,
+} from '@/lib/types';
 
 /**
- * Punto único de acceso a datos del cliente. Hoy delega al mock (lib/mock/mockApi.ts)
- * porque el backend (be_specs.md) todavía no existe. Cuando exista, estas funciones
- * pasan a llamar a los Route Handlers BFF (fe_specs.md ADR-3) sin que los hooks que
- * las consumen cambien de forma.
+ * Punto único de acceso a datos del cliente. Llama a los Route Handlers BFF
+ * (fe_specs.md ADR-3, app/api/*), que a su vez proxean al backend real
+ * desplegado — ver lib/backendProxy.ts. El mock (lib/mock/mockApi.ts) queda
+ * disponible pero ya no se usa por defecto.
  */
+async function parseOrThrow<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`${response.status}: ${body}`);
+  }
+  return response.json() as Promise<T>;
+}
+
 export const apiClient = {
-  fetchNextScenario: () => mockApi.fetchNextScenario(),
-  submitAttempt: (req: SubmitAttemptRequest) => mockApi.submitAttempt(req),
-  fetchLeaderboard: () => mockApi.fetchLeaderboard(),
+  fetchNextScenario: () => fetch('/api/scenarios/next').then((r) => parseOrThrow<ScenarioResponse>(r)),
+
+  submitAttempt: (req: SubmitAttemptRequest) =>
+    fetch('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(req),
+    }).then((r) => parseOrThrow<SubmitAttemptResponse>(r)),
+
+  fetchLeaderboard: () => fetch('/api/leaderboard').then((r) => parseOrThrow<LeaderboardResponse>(r)),
 };

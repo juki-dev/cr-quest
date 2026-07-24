@@ -13,7 +13,7 @@ let template: Template;
 beforeAll(() => {
   const app = new App();
   const dataStack = new DataStack(app, 'TestDataStack');
-  const authStack = new AuthStack(app, 'TestAuthStack');
+  const authStack = new AuthStack(app, 'TestAuthStack', { stage: 'test' });
   const apiStack = new ApiStack(app, 'TestApiStack', {
     stage: 'test',
     scenariosTable: dataStack.scenariosTable,
