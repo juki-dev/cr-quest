@@ -1,6 +1,6 @@
 import styles from './Topbar.module.css';
 
-export function Topbar() {
+export function Topbar({ userName }: { userName?: string }) {
   return (
     <header className={styles.topbar}>
       <div className={styles.brand}>
@@ -19,6 +19,19 @@ export function Topbar() {
         Entrenamiento APH
       </div>
       <div className={styles.brandSub}>Práctica de valoración del paciente</div>
+
+      {userName && (
+        <div className={styles.session}>
+          <span className={styles.userName}>{userName}</span>
+          {/* El logout borra cookies httpOnly: solo el servidor puede hacerlo (ADR-3),
+              por eso es un form POST y no un onClick. */}
+          <form action="/api/auth/logout" method="post">
+            <button type="submit" className={styles.logout}>
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
+      )}
     </header>
   );
 }

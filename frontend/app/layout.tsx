@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
-import { Topbar } from '@/components/layout/Topbar';
 import { Disclaimer } from '@/components/ui/Disclaimer';
 import { Providers } from './providers';
 import './globals.css';
@@ -29,7 +28,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="es" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
         <Providers>
-          <Topbar />
           {children}
           <Disclaimer />
         </Providers>

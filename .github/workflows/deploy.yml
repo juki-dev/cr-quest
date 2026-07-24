@@ -1,4 +1,4 @@
-name: Deploy backend
+name: Deploy infra + hosting
 
 on:
   push:
@@ -16,6 +16,10 @@ on:
         description: 'Stage a desplegar (usado como sufijo de los stacks y de los parámetros SSM)'
         required: false
         default: 'dev'
+      frontendUrl:
+        description: 'URL pública del frontend en Amplify (fase 2). Vacío en el primer deploy; luego https://main.<appId>.amplifyapp.com para registrar el callback en Cognito.'
+        required: false
+        default: ''
 
 permissions:
   id-token: write # OIDC — sin credenciales de AWS de larga duración
@@ -24,6 +28,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   STAGE: ${{ github.event.inputs.stage || 'dev' }}
+  FRONTEND_URL: ${{ github.event.inputs.frontendUrl || '' }}
 
 jobs:
   test:
@@ -53,6 +58,12 @@ jobs:
       - name: Tests unitarios
         run: pnpm --filter @cr-quest/domain --filter @cr-quest/backend --filter @cr-quest/infra run test
 
+      - name: Frontend — lint, typecheck y tests
+        run: |
+          pnpm --filter @cr-quest/frontend run lint
+          pnpm --filter @cr-quest/frontend run typecheck
+          pnpm --filter @cr-quest/frontend run test
+
   deploy:
     name: cdk deploy
     needs: test
@@ -81,4 +92,10 @@ jobs:
 
       - name: cdk deploy --all
         working-directory: infra
-        run: pnpm exec cdk deploy --all --require-approval never --context stage=${{ env.STAGE }}
+        run: |
+          FRONTEND_CTX=""
+          if [ -n "${{ env.FRONTEND_URL }}" ]; then
+            FRONTEND_CTX="--context frontendUrl=${{ env.FRONTEND_URL }}"
+          fi
+          pnpm exec cdk deploy --all --require-approval never \
+            --context stage=${{ env.STAGE }} $FRONTEND_CTX

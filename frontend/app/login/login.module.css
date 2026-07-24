@@ -1,0 +1,99 @@
+.wrap {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  padding: 36px 32px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(23, 32, 58, 0.06);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  margin-bottom: 22px;
+}
+
+.title {
+  font-size: 22px;
+  line-height: 1.3;
+  margin: 0 0 10px 0;
+}
+
+.subtitle {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--texto-suave);
+  margin: 0 0 24px 0;
+}
+
+.error {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--rojo-dark);
+  background: #fff1f1;
+  border: 1px solid #f3c9cd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 18px 0;
+  text-align: left;
+}
+
+/* Botón de Google: fondo blanco, borde neutro — guía de marca de Google. */
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 18px;
+  border: 1.5px solid var(--borde);
+  border-radius: 10px;
+  background: var(--blanco);
+  color: var(--texto);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
+}
+.google:hover {
+  background: var(--superficie);
+  border-color: #c3cddb;
+}
+.google:active {
+  transform: scale(0.99);
+}
+.google:focus-visible {
+  outline: 2px solid var(--azul-dark);
+  outline-offset: 2px;
+}
+
+.googleIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.legal {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--texto-suave);
+  margin: 22px 0 0 0;
+}

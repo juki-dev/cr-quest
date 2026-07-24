@@ -12,10 +12,11 @@ Convención de IDs: `FE-<área>.<n>`.
 **Decisión:** Next.js 15+, App Router, React Server Components donde no hay interactividad (layout, disclaimer, shell de `/ranking`) y Client Components donde sí la hay (área de práctica, formularios).
 **Por qué:** es el modelo soportado activamente por Next.js; server components reducen el JS que baja al cliente en las partes estáticas.
 
-### ADR-2 · Autenticación: formularios propios contra la API de Cognito, no Hosted UI
-**Decisión:** llamadas server-side a Cognito (`InitiateAuth`, `SignUp`, `ConfirmSignUp` vía `@aws-sdk/client-cognito-identity-provider`) desde Route Handlers de Next.js, con pantallas de registro/login propias en español.
-**Alternativa descartada:** Cognito Hosted UI (o NextAuth con provider de Cognito apuntando al Hosted UI). Se descarta porque el Hosted UI no permite igualar el diseño del mockup ni garantizar el español al 100% sin proxys de theming adicionales — y RQ-5.15 pide explícitamente pantallas propias.
-**Consecuencia:** el frontend asume la responsabilidad de manejar el flujo de contraseña y confirmación de email que Hosted UI daría gratis; se acepta ese costo por control de UX.
+### ADR-2 · Autenticación: federación con Google vía Cognito (revisado 2026-07)
+**Decisión (vigente):** iniciar sesión con **Google como IdP federado en Cognito**, con flujo OAuth *authorization code* + **PKCE**. El App Client es público (sin secreto); el intercambio del `code` por tokens ocurre server-side en Route Handlers de Next.js (`/api/auth/login`, `/api/auth/callback`, `/api/auth/logout`). Una sola pantalla `/login` propia en español con el botón "Continuar con Google"; el `authorize` usa `identity_provider=Google` para saltar el selector del Hosted UI e ir directo a Google. Cognito emite sus propios JWT, así el authorizer del API (BE-SEC.3) sigue validando `jwtAudience = WebClient` sin cambios.
+**Decisión original (descartada):** formularios propios de email/contraseña contra la API de Cognito (`InitiateAuth`, `SignUp`, `ConfirmSignUp`), sin Hosted UI (RQ-5.15).
+**Por qué el cambio:** se pidió login con Google. La federación social en Cognito exige el flujo OAuth con redirección y un dominio Hosted UI — justo lo que la decisión original evitaba. Pero el motivo de aquella (pantallas propias en español, igualar el mockup) casi no aplica al login social: el usuario solo ve el botón propio y luego la pantalla de Google (ya localizada); el Hosted UI queda como mero proveedor de los endpoints `/oauth2/*`, sin UI visible.
+**Consecuencia:** hace falta infra nueva en `AuthStack` (IdP de Google + dominio Hosted UI + OAuth flows en el App Client) y **credenciales OAuth de Google Cloud** (client id en SSM `/cr-quest/<stage>/google/client-id`, client secret en Secrets Manager `cr-quest/<stage>/google-oauth`). No se implementa el flujo de email/contraseña; el App Client conserva `userPassword`/`userSrp` por si se agrega más adelante. **ADR-3 se preserva intacto** (los tokens siguen en cookies `httpOnly`).
 
 ### ADR-3 · Los tokens de Cognito nunca llegan al JavaScript del navegador (patrón BFF)
 **Decisión:** los Route Handlers de Next.js actúan como *backend-for-frontend*: reciben usuario/contraseña, llaman a Cognito, y guardan el `id token` / `refresh token` en **cookies `httpOnly`, `secure`, `sameSite=lax`**. Todas las llamadas de negocio (`/api/scenarios/next`, `/api/attempts`, etc.) también pasan por Route Handlers que leen la cookie server-side, adjuntan el `Authorization: Bearer` hacia la API Gateway real, y renuevan el token con el refresh token cuando expira.
@@ -159,12 +160,13 @@ Cada componente reproduce una sección exacta del mockup, referenciada por líne
 
 ## 7. Autenticación
 
-- [ ] **FE-AUTH.1** · P0 · ⟵ RQ-5.15, ADR-2 · Formularios de registro (email, contraseña, nombre para mostrar) y login, en español, con validación de campos antes de enviar.
-- [ ] **FE-AUTH.2** · P0 · ⟵ RQ-2.9 · El campo "nombre para mostrar" del registro se envía al backend para poblar `STATS.displayName` (be_specs § 3) — sin este dato el ranking no puede mostrar nombres.
-- [ ] **FE-AUTH.3** · P0 · ⟵ ADR-3 · El Route Handler de login guarda en la cookie de sesión tanto el token como el grupo (`cognito:groups`) decodificado del JWT, para que `layout.tsx` (FE-ROUTE.2) no tenga que decodificar el token en cada request.
-- [ ] **FE-AUTH.4** · P0 · ⟵ ADR-3 · Renovación silenciosa: si un Route Handler de proxy recibe `401` de la API Gateway, intenta refrescar con el refresh token antes de propagar el error al cliente.
-- [ ] **FE-AUTH.5** · P1 · **Confirmación de email** vía el flujo estándar de Cognito (`ConfirmSignUp`), con pantalla propia en español para ingresar el código recibido.
-- [ ] **FE-AUTH.6** · P1 · Logout limpia las cookies `httpOnly` desde el Route Handler correspondiente (el cliente no puede hacerlo directamente, por diseño de ADR-3).
+- [x] **FE-AUTH.1** · P0 · ⟵ ADR-2 (revisado) · Pantalla `/login` propia en español con botón "Continuar con Google". El flujo OAuth+PKCE vive en `app/api/auth/{login,callback,logout}` y `lib/auth/*`.
+- [ ] **FE-AUTH.2** · P0 · ⟵ RQ-2.9 · `STATS.displayName` (be_specs § 3) se puebla con el `name` mapeado de Google (atributo `fullname` del pool). Falta confirmar que el backend lo persiste al primer intento del usuario federado — sin ese dato el ranking no muestra nombres.
+- [x] **FE-AUTH.3** · P0 · ⟵ ADR-3 · La sesión sale de la cookie httpOnly; `readSession()` (`lib/auth/session.ts`) decodifica el id token una vez y expone `cognito:groups` → `isInstructor` al layout y a los componentes cliente (vía `SessionProvider`).
+- [x] **FE-AUTH.4** · P0 · ⟵ ADR-3 · Renovación silenciosa: `backendProxy` refresca proactivamente si el id token venció y reintenta una vez ante un `401` del API con el refresh token.
+- [ ] **FE-AUTH.5** · ~~P1 · Confirmación de email (`ConfirmSignUp`)~~ · **No aplica** con login social: Google entrega el email ya verificado. Reintroducir solo si se agrega registro con email/contraseña.
+- [x] **FE-AUTH.6** · P1 · Logout (`/api/auth/logout`) borra las cookies httpOnly y cierra la sesión en Cognito (`/logout`). Es un form POST porque el cliente no puede tocar cookies httpOnly (ADR-3).
+- [ ] **FE-AUTH.7** · P1 · ⟵ RQ-2.6 · Asignación del grupo `voluntario` a usuarios federados de Google (hoy no ocurre automáticamente; los voluntarios funcionan igual porque el backend gatea por `sub`, pero conviene un trigger Post-Authentication/Pre-Token o un paso operativo). Ver nota en `AuthStack`.
 
 ---
 
